@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>近似值 (Approximation) 互動課堂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .math-font { font-family: "Times New Roman", serif; font-style: italic; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* 落閘視覺化樣式 */
+        .gate-digit { position: relative; display: inline-block; width: 45px; text-align: center; font-size: 2.5rem; transition: all 0.3s; }
+        .gate-line { position: absolute; right: -2px; top: -15px; bottom: -15px; width: 5px; background-color: #ef4444; border-radius: 2px; box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); z-index: 10; }
+        .gate-line::before { content: "閘門"; position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 0.8rem; color: #ef4444; font-weight: bold; white-space: nowrap; }
+        
+        /* 數字狀態顏色 */
+        .digit-active { color: #818cf8; font-weight: bold; } /* 保留部分 */
+        .digit-check { color: #fbbf24; text-decoration: underline; font-weight: bold; } /* 觀察位 */
+        .digit-ignored { color: #475569; } /* 捨棄部分 */
+
+        /* 模式按鈕樣式 */
+        .mode-btn.active { background-color: #4f46e5; color: white; border-color: #4f46e5; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans leading-relaxed">
+
+    <div class="max-w-4xl mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="mb-8 text-center border-b pb-6">
+            <h1 class="text-3xl font-bold text-indigo-700">中一數學：近似值與有效數字</h1>
+            <p class="text-slate-500 mt-2">教學核心：落閘、觀察、進捨</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex flex-wrap border-b border-indigo-200 mb-6">
+            <button onclick="showTab('concept')" class="tab-btn px-4 py-2 font-medium border-b-2 border-indigo-600 text-indigo-600" id="default-tab">核心概念</button>
+            <button onclick="showTab('gate-visual')" class="tab-btn px-4 py-2 font-medium text-slate-500 hover:text-indigo-600">🚧 「落閘」通用演示</button>
+            <button onclick="showTab('quiz')" class="tab-btn px-4 py-2 font-medium text-slate-500 hover:text-indigo-600 bg-indigo-50 rounded-t-lg ml-auto">🎲 隨機挑戰</button>
+        </div>
+
+        <!-- Tab 1: Concept -->
+        <div id="concept" class="tab-content active space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold mb-4 flex items-center"><span class="bg-indigo-100 text-indigo-700 w-8 h-8 rounded-full inline-flex items-center justify-center mr-2">1</span> 什麼是近似值？</h2>
+                <div class="grid md:grid-cols-2 gap-4 text-center">
+                    <div class="p-4 bg-green-50 rounded-lg border border-green-100">
+                        <h3 class="font-bold text-green-700 mb-2">真確值 (Exact)</h3>
+                        <p class="text-3xl">32</p>
+                        <p class="text-sm mt-1 text-green-600">班上的學生人數</p>
+                    </div>
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h3 class="font-bold text-blue-700 mb-2">近似值 (Approx)</h3>
+                        <p class="text-3xl">170</p>
+                        <p class="text-sm mt-1 text-blue-600">大約的身高 (cm)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Universal Gate Visualizer -->
+        <div id="gate-visual" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                <h2 class="text-xl font-bold mb-6 text-indigo-700">「落閘」通用教學演示器</h2>
+                
+                <!-- Controls -->
+                <div class="grid md:grid-cols-3 gap-6 p-6 bg-slate-50 rounded-xl mb-8 border border-slate-200">
+                    <div>
+                        <label class="block text-sm font-bold mb-2 text-slate-600">1. 輸入數字：</label>
+                        <input type="text" id="v-input" value="24.728" class="w-full p-3 border-2 border-slate-300 rounded-lg focus:border-indigo-500 outline-none text-xl math-font" oninput="runVisual()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2 text-slate-600">2. 取至：</label>
+                        <div class="flex space-x-2">
+                            <select id="v-target-type" class="p-2 border rounded bg-white text-sm" onchange="runVisual()">
+                                <option value="sig">位有效數字</option>
+                                <option value="dp">位小數位</option>
+                                <option value="place">位（如：十位1, 百位2）</option>
+                            </select>
+                            <input type="number" id="v-target-val" value="3" min="1" max="10" class="w-16 p-2 border rounded" oninput="runVisual()">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2 text-slate-600">3. 捨入方法：</label>
+                        <div class="grid grid-cols-3 gap-1 bg-slate-200 p-1 rounded-lg">
+                            <button onclick="setMode('round')" id="btn-round" class="mode-btn active text-[10px] py-2 rounded">四捨五入</button>
+                            <button onclick="setMode('up')" id="btn-up" class="mode-btn text-[10px] py-2 rounded">上捨入</button>
+                            <button onclick="setMode('down')" id="btn-down" class="mode-btn text-[10px] py-2 rounded">下捨入</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Display -->
+                <div id="v-display" class="py-16 flex justify-center items-center overflow-x-auto bg-slate-800 rounded-2xl text-white mb-8 border-4 border-slate-700 shadow-inner">
+                    <!-- Dynamic Content -->
+                </div>
+
+                <!-- Result Box -->
+                <div class="bg-indigo-900 text-white p-6 rounded-xl text-center shadow-lg transition-all transform hover:scale-[1.02]">
+                    <p class="text-indigo-200 text-sm mb-1">最終結果</p>
+                    <h3 id="v-result" class="text-4xl font-black math-font tracking-wider">---</h3>
+                    <div id="v-logic-text" class="mt-4 text-sm bg-indigo-800/50 p-3 rounded-lg border border-indigo-700">
+                        正在解析步驟...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: QUIZ -->
+        <div id="quiz" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-lg border-2 border-indigo-500">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-indigo-700">🎲 隨機挑戰區</h2>
+                    <button onclick="generateQuestion()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-full font-bold transition shadow-lg">生成題目</button>
+                </div>
+                <div id="question-area" class="p-12 bg-slate-50 rounded-2xl text-center border-4 border-dotted border-slate-200">
+                    <p class="text-indigo-500 font-bold mb-2" id="q-type">---</p>
+                    <h3 class="text-5xl font-black mb-6 math-font" id="q-number">---</h3>
+                    <p class="text-2xl text-slate-700 font-medium" id="q-instruction">按下按鈕開始</p>
+                </div>
+                <div class="mt-8 flex flex-col items-center">
+                    <button id="show-ans-btn" onclick="toggleAnswer()" class="hidden bg-white border-2 border-indigo-600 text-indigo-600 px-8 py-2 rounded-full font-bold hover:bg-indigo-50 transition">查看答案</button>
+                    <div id="answer-area" class="hidden mt-6 p-6 bg-green-500 text-white rounded-2xl text-3xl font-black shadow-xl animate-bounce">
+                        ---
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'round';
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-600', 'text-indigo-600');
+                btn.classList.add('text-slate-500');
+            });
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('border-indigo-600', 'text-indigo-600');
+            event.currentTarget.classList.remove('text-slate-500');
+            if (tabId === 'gate-visual') runVisual();
+        }
+
+        function setMode(m) {
+            currentMode = m;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + m).classList.add('active');
+            runVisual();
+        }
+
+        function runVisual() {
+            const inputStr = document.getElementById('v-input').value.trim();
+            const targetType = document.getElementById('v-target-type').value;
+            const targetVal = parseInt(document.getElementById('v-target-val').value) || 1;
+            const container = document.getElementById('v-display');
+            const resultEl = document.getElementById('v-result');
+            const logicEl = document.getElementById('v-logic-text');
+
+            if (!inputStr || isNaN(parseFloat(inputStr))) return;
+
+            const num = parseFloat(inputStr);
+            container.innerHTML = "";
+            
+            // 處理顯示用的數字串
+            let digits = inputStr.split("");
+            let sigCount = 0;
+            let started = false;
+            let gateIndex = -1;
+
+            // 1. 確定閘門索引
+            if (targetType === 'sig') {
+                for (let i = 0; i < digits.length; i++) {
+                    let d = digits[i];
+                    if (!started && d !== "0" && d !== "." && d !== "-") started = true;
+                    if (started && !isNaN(parseInt(d))) {
+                        sigCount++;
+                        if (sigCount === targetVal) {
+                            gateIndex = i;
+                            break;
+                        }
+                    }
+                }
+            } else if (targetType === 'dp') {
+                let dotIndex = digits.indexOf(".");
+                if (dotIndex === -1) {
+                    // 如果沒小數點，當作 0 位小數，閘門在最後
+                    gateIndex = digits.length - 1;
+                } else {
+                    gateIndex = dotIndex + targetVal;
+                }
+            } else if (targetType === 'place') {
+                let dotIndex = digits.indexOf(".");
+                let ref = dotIndex === -1 ? digits.length : dotIndex;
+                gateIndex = ref - targetVal - 1;
+            }
+
+            // 2. 繪製視覺化
+            digits.forEach((d, i) => {
+                const span = document.createElement('div');
+                span.className = "gate-digit math-font";
+                span.innerText = d;
+
+                if (i <= gateIndex) {
+                    span.classList.add('digit-active');
+                } else if (i === gateIndex + 1 || (digits[gateIndex+1] === '.' && i === gateIndex + 2)) {
+                    span.classList.add('digit-check');
+                } else {
+                    span.classList.add('digit-ignored');
+                }
+
+                if (i === gateIndex) {
+                    const gate = document.createElement('div');
+                    gate.className = "gate-line";
+                    span.appendChild(gate);
+                }
+                container.appendChild(span);
+            });
+
+            // 3. 正確的數學計算 (修復末尾零問題)
+            let finalAnsStr = "";
+            let logicText = "";
+
+            // 計算精確定位用的權值
+            let power;
+            if (targetType === 'dp') {
+                power = Math.pow(10, -targetVal);
+            } else if (targetType === 'sig') {
+                // 有效數字的權值取決於第一個非零位
+                power = Math.pow(10, Math.floor(Math.log10(Math.abs(num))) - targetVal + 1);
+            } else {
+                power = Math.pow(10, targetVal);
+            }
+
+            // 執行計算
+            let calculatedNum;
+            if (currentMode === 'round') {
+                calculatedNum = Math.round(num / power) * power;
+                logicText = `四捨五入：觀察閘後首位。滿 5 則閘前數字進一。`;
+            } else if (currentMode === 'up') {
+                calculatedNum = Math.ceil(num / power) * power;
+                logicText = `上捨入：只要閘門後有數字(非零)，閘前就進一。`;
+            } else {
+                calculatedNum = Math.floor(num / power) * power;
+                logicText = `下捨入：直接切斷閘後數字，無視它們。`;
+            }
+
+            // 4. 格式化輸出字符串 (關鍵：保留正確的末尾零)
+            if (targetType === 'dp') {
+                finalAnsStr = calculatedNum.toFixed(targetVal);
+            } else if (targetType === 'sig') {
+                // toPrecision 能完美處理有效數字
+                finalAnsStr = calculatedNum.toPrecision(targetVal);
+                // 如果結果是科學計數法且數字不大，轉回普通數字
+                if (finalAnsStr.includes('e')) {
+                    finalAnsStr = Number(finalAnsStr).toString();
+                }
+            } else {
+                finalAnsStr = Math.round(calculatedNum).toString();
+            }
+
+            resultEl.innerText = finalAnsStr;
+            logicEl.innerText = logicText;
+        }
+
+        // --- QUIZ LOGIC ---
+        function generateQuestion() {
+            const types = ['dp', 'sig', 'up', 'down'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const num = (Math.random() * 400 + 10.54321).toFixed(5);
+            const val = parseFloat(num);
+            let instruction = "", answer = "", typeLabel = "";
+
+            switch(type) {
+                case 'dp':
+                    typeLabel = "小數位挑戰 (四捨五入)"; 
+                    let d = Math.floor(Math.random() * 2) + 1;
+                    instruction = `準確至 ${d} 位小數`; 
+                    answer = val.toFixed(d); break;
+                case 'sig':
+                    typeLabel = "有效數字挑戰 (四捨五入)"; 
+                    let s = Math.floor(Math.random() * 2) + 2;
+                    instruction = `準確至 ${s} 位有效數字`; 
+                    answer = val.toPrecision(s); break;
+                case 'up':
+                    typeLabel = "上捨入挑戰"; 
+                    instruction = "上捨入至 整數"; 
+                    answer = Math.ceil(val).toString(); break;
+                case 'down':
+                    typeLabel = "下捨入挑戰"; 
+                    instruction = "下捨入至 一位小數"; 
+                    answer = (Math.floor(val * 10) / 10).toFixed(1); break;
+            }
+
+            document.getElementById('q-type').innerText = typeLabel;
+            document.getElementById('q-number').innerText = num;
+            document.getElementById('q-instruction').innerText = instruction;
+            document.getElementById('answer-area').innerText = answer;
+            document.getElementById('answer-area').classList.add('hidden');
+            document.getElementById('show-ans-btn').classList.remove('hidden');
+        }
+
+        function toggleAnswer() {
+            const ans = document.getElementById('answer-area');
+            ans.classList.toggle('hidden');
+        }
+
+        window.onload = () => { runVisual(); };
+    </script>
+</body>
+</html>
